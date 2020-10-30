@@ -20,8 +20,14 @@ const fetchData = async (url) => {
 const createElementOption = (country) => {
 
     let option = new Option(country.name);
-    option.value = country.alpha2Code;
-    console.log(country);
+    option.id = country.alpha2Code;
+
+    // Los UM, CD daban problemas, si las coordenadas están vacías, se les da 0
+    (country.latlng[0] == undefined ? country.latlng[0] = 0 : country.latlng[0]);
+    (country.latlng[1] == undefined ? country.latlng[1] = 0 : country.latlng[1]);
+
+    option.value = `${country.latlng[0]},${country.latlng[1]}`;
+
     return option;
 }
 
@@ -42,7 +48,7 @@ const loadCountries = async () => {
 
 }
 
-const loadNeighbours = async () => {
+const loadNeighbours = async () => { // aquí
 
     try {
         let parametros = {
@@ -55,10 +61,20 @@ const loadNeighbours = async () => {
                 'Access-Control-Allow-Origin': 'https://localhost:3000'
             }
         }
-        let countryCode = select.options[select.selectedIndex].value;
-        iniciarMap(select.options[select.selectedIndex].latlng[0],select.options[select.selectedIndex].latlng[1]);
+
+        let countryCode = select.options[select.selectedIndex].id;
+        let coordenades = select.options[select.selectedIndex].value.split(',');
+
+        let latitud = coordenades[0];
+        let longitud = coordenades[1];
+
+        if (latitud && longitud) {
+            iniciarMap(latitud, longitud);
+        }
+
+
         let neighbours = await fetchData(URLs.neighbours.concat(countryCode), parametros);
-        console.log(neighbours);
+        console.log("URL: " + neighbours);
 
         document.querySelector('#neighbours').innerHTML =
             neighbours.reduce((ac, neighbour) => ac + "\n" + neighbour.country_name, "");
@@ -68,29 +84,32 @@ const loadNeighbours = async () => {
     }
 }
 
-window.addEventListener('load', loadCountries);
-
-const obtenerLocalizacion = ()=> {
-    if(navigator.geolocation) {
+const obtenerLocalizacion = () => {
+    if (navigator.geolocation) {
         document.getElementById("nivelSoporte").innerHTML =
-        navigator.geolocation.getCurrentPosition(updateLocation);
-    } 
-}    
+            navigator.geolocation.getCurrentPosition(updateLocation);
+    }
+}
+
+
 let lat, lon, pre;
 
 const updateLocation = (position) => {
-    console.log("position", position);
-    let lat = position.coords.latitude;
-    let lon = position.coords.longitude;
-    let pre = position.coords.accuracy;
-    console.log(lat, lon, pre);
+    // console.log("position", position);
+    lat = position.coords.latitude;
+    lon = position.coords.longitude;
+    pre = position.coords.accuracy;
+    // console.log(lat, lon, pre);
 }
-window.onload = obtenerLocalizacion;
 
-function iniciarMap(){
-    let coord = {lat:lat, lng:lon};
-    let map = google.maps.Map(document.getElementById("nivelSoporte"), {
-        zoom:10,
-        center: coord
+
+function iniciarMap(latitud, longitud) {
+    let map = new google.maps.Map(document.getElementById("nivelSoporte"), {
+        center: { lat: Number.parseFloat(latitud), lng: Number.parseFloat(longitud) },
+        zoom: 5,
     });
 }
+
+
+window.addEventListener('load', loadCountries);
+window.onload = obtenerLocalizacion;
